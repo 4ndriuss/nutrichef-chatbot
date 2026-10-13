@@ -1,184 +1,204 @@
-# 🥗 NutriChef AI — Smart Nutrition & Meal Planner Assistant
+# 🥗 NutriChef AI — Smart Nutrition & Meal Planning Assistant
 
-> **Final Project: Chatbot Berbasis AI dengan LLM & Retrieval-Augmented Generation (RAG)**  
-> Dibangun menggunakan **Python**, **Streamlit**, **Groq Cloud API (Llama 3.3 70B & Llama 3.1 8B)**, dan **Hybrid RAG Knowledge Base**.
+> **Final Project: AI-Powered Conversational Assistant with LLMs and Hybrid Retrieval-Augmented Generation (RAG)**  
+> Built with **Python**, **Streamlit**, **Groq Cloud API (Qwen 3.8 27B & Llama 3.3 70B)**, and a **Dual-Engine Vector Store (ChromaDB + BM25)**.
 
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![LLM Engine](https://img.shields.io/badge/LLM-Groq%20Cloud-f55036.svg)](https://groq.com/)
-[![RAG Architecture](https://img.shields.io/badge/RAG-ChromaDB%20%7C%20BM25-green.svg)](#arsitektur-sistem)
-[![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![Primary Model](https://img.shields.io/badge/Model-Qwen%203.8%2027B-purple.svg)](https://groq.com/)
+[![RAG Architecture](https://img.shields.io/badge/RAG-ChromaDB%20%7C%20BM25-green.svg)](#-system-architecture)
+[![License](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
 ---
 
-## 📖 1. Ringkasan Proyek & Use Case
+## 📖 1. Project Overview & Use Case
 
-**NutriChef AI** adalah asisten kecerdasan buatan cerdas yang dirancang untuk memecahkan dilema harian masyarakat: *"Hari ini masak apa yang sehat, hemat, dan sesuai target tubuh saya?"*. 
+**NutriChef AI** is an intelligent nutrition consultant and interactive culinary meal planner designed to address a common daily dilemma: *"What can I cook today that is healthy, budget-friendly, and aligned with my personal fitness and health goals?"*
 
-Aplikasi ini bertindak sebagai perencana menu makanan (*meal planner*) dan konsultan nutrisi interaktif. Pengguna dapat berkonsultasi mengenai resep masakan berbasis bahan yang mereka miliki di rumah, menghitung estimasi kebutuhan kalori (TDEE & BMR), serta mendapatkan rancangan menu yang dipersonalisasi sesuai profil kesehatan, pantangan alergi, dan preferensi diet khusus.
+The system enables users to:
+- Generate tailored healthy recipes based on available household ingredients.
+- Calculate accurate daily caloric & macronutrient needs (BMR & TDEE formulas).
+- Receive personalized meal plans adjusted for dietary goals, medical conditions (e.g., diabetes, hypertension), and food allergies.
+- Access evidence-based nutritional knowledge via semantic document retrieval (RAG).
 
 ---
 
-## 🎨 2. Parameter Kreatif & Fitur Unggulan
+## 🎨 2. Creative Parameters & Key Features
 
-Proyek ini mengimplementasikan parameter konfigurasi kreatif yang dapat disesuaikan langsung oleh pengguna melalui sidebar interaktif:
+NutriChef AI exposes an interactive sidebar with several configurable creative parameters:
 
-### A. Persona & Gaya Bahasa AI (Tone & Manner)
-- 👨‍🍳 **Chef Ramah & Inspiratif**: Gaya bahasa santun, bersahabat, penuh motivasi, dan kaya akan tips kuliner praktis agar masakan sehat tetap lezat.
-- 🩺 **Ahli Gizi Medis (Clinical Dietitian)**: Gaya bahasa formal, ilmiah, berbasis bukti medis, fokus pada indeks glikemik, profil makronutrien, dan kestabilan metabolisme.
-- 🏋️‍♂️ **Fitness & Bodybuilding Coach**: Gaya bahasa enerjik, to-the-point, fokus pada target protein harian, *clean bulking*, dan pemulihan performa fisik.
+### A. Persona & Tone of Voice
+- 👨‍🍳 **Friendly & Inspiring Chef**: Warm, motivational, encouraging, and packed with practical culinary tips to make healthy food taste delicious.
+- 🩺 **Clinical Dietitian**: Formal, evidence-based, data-driven, focusing on glycemic indexes, lipid profiles, and metabolic health.
+- 🏋️‍♂️ **Fitness & Bodybuilding Coach**: Energetic, disciplined, results-oriented, focusing on daily protein targets, lean muscle growth, and workout recovery.
 
-### B. Konfigurasi Pola Makan & Target Diet
-- **Defisit Kalori (Fat Loss)**: Pengurangan 300-500 kkal di bawah TDEE dengan fokus protein tinggi & volume serat.
-- **Clean Bulking (Muscle Gain)**: Surplus kalori berkualitas untuk pembentukan massa otot bebas lemak.
-- **Rendah Karbohidrat / Ketogenik**: Pembatasan ketat karbohidrat (<50g/hari) untuk memicu ketosis.
-- **Rendah Gula (Diabetes-Friendly)**: Penggunaan bahan dengan Indeks Glikemik (GI) rendah (<55).
-- **Rendah Garam (DASH Diet / Hipertensi)**: Pembatasan natrium (<1.500 mg) dengan pemanfaatan rempah aromatik alami.
+### B. Dietary Goal Customization
+- **Caloric Deficit (Fat Loss)**: 300–500 kcal reduction below TDEE with high-protein and high-fiber volume.
+- **Clean Bulking (Muscle Gain)**: Controlled calorie surplus with nutrient-dense complex carbs and lean protein sources.
+- **Low Carbohydrate / Ketogenic**: Strict carb restriction (<50g/day) to encourage metabolic ketosis.
+- **Low Sugar (Diabetes-Friendly)**: Low-GI ingredients (<55) designed to prevent blood glucose spikes.
+- **Low Sodium (DASH Diet / Hypertension)**: Sodium restriction (<1,500 mg/day) using aromatic herbs and spices.
 
-### C. Filter Alergi & Pantangan Otomatis
-Pengguna dapat memasukkan bahan yang dihindari (misal: *kacang, udang, gluten, laktosa*). NutriChef AI akan memvalidasi resep dan memberikan substitusi bahan yang aman tanpa mengurangi kualitas nutrisi.
+### C. Automated Allergy & Restriction Filter
+Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). The assistant dynamically filters out restricted ingredients and suggests safe culinary substitutions without compromising nutritional value.
 
-### D. Parameter Teknis Model AI (Groq Engine)
-- **Model Switcher**: Pilihan model unggulan seperti `qwen/qwen3.8-27b` (model reasoning & chat performa tinggi), `qwen-2.5-32b`, `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, serta opsi input model kustom.
-- **Temperature Slider**: Mengatur tingkat kreativitas respons LLM dari 0.0 (deterministik/faktual) hingga 1.0 (kreatif).
+### D. Advanced LLM Configuration (Groq Engine)
+- **Model Switcher**: Powered by Groq's high-speed LPU inference with models including:
+  - `qwen/qwen3.8-27b` (Default — cutting-edge reasoning and culinary logic).
+  - `qwen-2.5-32b`
+  - `llama-3.3-70b-versatile`
+  - `llama-3.1-8b-instant` (Ultra-low latency streaming).
+  - *Custom Model ID input option*.
+- **Creativity Slider (Temperature)**: Adjustable from `0.0` (factual, strictly nutritional) to `1.0` (creative culinary brainstorming).
 
 ### E. Hybrid RAG (Retrieval-Augmented Generation)
-- **Pre-curated Local Knowledge Base**: Dilengkapi basis data resep sehat nusantara, tabel nilai gizi bahan pangan (TKPI Kemenkes & USDA), dan panduan klinis diet terstruktur.
-- **Dynamic File Ingestion**: Fitur unggah file (PDF, TXT, MD) secara dinamis langsung dari antarmuka web, sehingga pengguna dapat memasukkan resep kustom atau dokumen catatan medis mereka sendiri.
+- **Curated Knowledge Base**: Includes structured nutritional tables (Indonesian TKPI & USDA FoodData Central), evidence-based diet handbooks, and healthy recipes.
+- **Dynamic File Ingestion**: Users can upload supplementary documents (PDF, TXT, Markdown) directly through the UI, which are immediately parsed and embedded into the vector store.
+- **Dual Engine Resilience**: Primary semantic search using **ChromaDB** with `all-MiniLM-L6-v2` dense embeddings, backed by a deterministic **BM25 Lexical Fallback Engine**.
 
-### F. Multi-turn Memory & Fitur Ekspor
-- **Percakapan Kontekstual**: Bot mengingat riwayat diskusi sebelumnya sehingga pengguna dapat meminta revisi menu (contoh: *"Ganti ayamnya dengan tahu dan hitung ulang kalorinya"*).
-- **Ekspor Riwayat Chat**: Tombol unduh transkrip konsultasi dalam format Markdown (`.md`).
-- **Reset Sesi**: Kemudahan mengosongkan riwayat dengan satu klik.
+### F. Multi-turn Memory & Export
+- **Context-Aware Dialogue**: Maintains sliding-window conversational memory to support follow-up adjustments (e.g., *"Replace the chicken breast with tofu and recalculate the calories"*).
+- **Export Chat Transcript**: One-click download of the consultation history in clean Markdown format (`.md`).
+- **Session Reset**: Instant context clearance button.
 
 ---
 
-## 🏗️ 3. Arsitektur Sistem
-
-Berikut adalah diagram alur kerja pemrosesan percakapan dan RAG pada NutriChef AI:
+## 🏗️ 3. System Architecture
 
 ```mermaid
 flowchart TD
-    User([Pengguna]) -->|Input Chat / Pertanyaan| UI[Streamlit Web Interface]
-    Sidebar[Sidebar Parameter Kreatif] -->|Persona, Diet, Alergi, Temp| SystemPromptBuilder[System Prompt Generator]
+    User([User]) -->|User Query / Chat Input| UI[Streamlit Web Interface]
+    Sidebar[Sidebar Controls] -->|Persona, Diet Goal, Allergies, Temperature| SystemPromptBuilder[System Prompt Generator]
     
-    subgraph RAG_Pipeline [Pipeline RAG]
-        KB[(Local Knowledge Base: Resep & Tabel Gizi)] --> Chunker[Markdown / PDF Chunker]
-        Upload[Upload Dokumen User] --> Chunker
+    subgraph RAG_Pipeline [Hybrid RAG Pipeline]
+        KB[(Curated Knowledge Base: Recipes & Nutrition Tables)] --> Chunker[Markdown / PDF Chunker]
+        Upload[Dynamic User Upload: PDF/TXT] --> Chunker
         Chunker --> VectorStore[(Vector Store: ChromaDB / BM25)]
-        UI -->|Kueri Pencarian| Retriever[Context Retriever]
+        UI -->|Semantic Query| Retriever[Context Retriever]
         VectorStore --> Retriever
     end
     
-    Retriever -->|Konteks Gizi Terkait| SystemPromptBuilder
-    SystemPromptBuilder --> ChatPayload[Chat Payload + Memory History]
+    Retriever -->|Ground-Truth Context| SystemPromptBuilder
+    SystemPromptBuilder --> ChatPayload[Chat Payload + Memory Window]
     
     subgraph LLM_Groq [Groq Cloud Inference]
-        ChatPayload --> GroqAPI[Llama 3.3 70B / Llama 3.1 8B]
-        GroqAPI -->|Streaming Tokens| UI
+        ChatPayload --> GroqAPI[Qwen 3.8 27B / Llama 3.3 70B]
+        GroqAPI -->|Real-time Token Streaming| UI
     end
     
-    UI -->|Kartu Rekomendasi + Tabel Gizi| User
+    UI -->|Structured Recipe Card & Nutrition Breakdown| User
 ```
 
 ---
 
-## 📁 4. Struktur Direktori Proyek
+## 📁 4. Project Directory Structure
 
 ```text
 nutrichef-ai/
-├── app.py                      # Antarmuka web utama Streamlit & controller chat
-├── rag_pipeline.py             # Engine RAG (ChromaDB Vector Store, PDF Ingestion, BM25)
-├── prompts.py                  # Konfigurasi Persona, aturan diet, dan template respon
+├── app.py                      # Main Streamlit application & interactive UI
+├── rag_pipeline.py             # RAG engine (ChromaDB vector store, BM25 fallback, PDF parser)
+├── prompts.py                  # Persona definitions, clinical diet rules, and prompt templates
 ├── data/
-│   └── knowledge_base/         # Basis pengetahuan terkurasi bawaan sistem
-│       ├── resep_sehat_nusantara.md    # Resep masakan lokal bergizi seimbang
-│       ├── tabel_nutrisi_bahan.md      # Tabel referensi kalori & makro pangan
-│       └── panduan_diet_terstruktur.md # Aturan medis diet & substitusi alergi
-├── .env.example                # Contoh konfigurasi environment variable
-├── .gitignore                  # Berkas pengabaian Git (env, cache, venv)
-├── requirements.txt            # Daftar pustaka & dependensi Python
-└── README.md                   # Dokumentasi lengkap proyek
+│   └── knowledge_base/         # Curated factual nutrition datasets
+│       ├── resep_sehat_nusantara.md    # Healthy recipe catalog with macro breakdowns
+│       ├── tabel_nutrisi_bahan.md      # Calorie and macronutrient reference tables
+│       └── panduan_diet_terstruktur.md # Clinical diet handbooks & allergy substitutions
+├── docs/
+│   └── screenshots/            # UI screenshots for final project deliverables
+├── .env.example                # Environment variable configuration template
+├── .gitignore                  # Git ignore rules (protects credentials and cache)
+├── requirements.txt            # Python package dependencies
+└── README.md                   # Comprehensive project documentation
 ```
 
 ---
 
-## 🚀 5. Panduan Instalasi & Menjalankan Proyek
+## 🚀 5. Installation & Setup Guide
 
-### Prasyarat
-- Python versi 3.10 atau yang lebih baru terpasang di sistem Anda.
-- API Key gratis dari [Groq Cloud Console](https://console.groq.com/keys).
+### Prerequisites
+- Python **3.10** or newer installed.
+- Free API Key from [Groq Cloud Console](https://console.groq.com/keys).
 
-### Langkah-Langkah:
+### Step-by-Step Instructions:
 
-1. **Clone Repositori:**
+1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/<username-anda>/nutrichef-ai.git
+   git clone https://github.com/<your-username>/nutrichef-ai.git
    cd nutrichef-ai
    ```
 
-2. **Buat dan Aktifkan Virtual Environment (Disarankan):**
+2. **Create and Activate a Virtual Environment:**
    ```bash
-   # Di Windows (PowerShell):
+   # On Windows (PowerShell):
    python -m venv venv
    .\venv\Scripts\Activate.ps1
 
-   # Di macOS/Linux:
+   # On macOS / Linux:
    python3 -m venv venv
    source venv/bin/activate
    ```
 
-3. **Pasang Dependensi:**
+3. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Konfigurasi Environment Variable (Opsional):**
-   Salin file `.env.example` menjadi `.env` lalu masukkan API Key Anda:
+4. **Configure Environment Variables (Optional):**
+   Copy `.env.example` to `.env` and insert your Groq API key:
    ```bash
    cp .env.example .env
    ```
-   *Catatan: Anda juga bisa langsung memasukkan API Key di sidebar aplikasi web tanpa perlu mengedit file `.env`.*
+   *Note: You can also enter the Groq API key directly into the sidebar field inside the web interface without touching the `.env` file.*
 
-5. **Jalankan Aplikasi Streamlit:**
+5. **Launch the Application:**
    ```bash
    streamlit run app.py
    ```
-   Aplikasi akan terbuka otomatis di peramban web pada alamat: `http://localhost:8501`.
+   The application will automatically open in your default browser at **`http://localhost:8501`**.
 
 ---
 
-## 🧪 6. Skenario Pengujian (Untuk Evaluator)
+## 🧪 6. Evaluation & Testing Scenarios
 
-| No | Skenario Uji | Input Pengguna | Ekspektasi Respon Bot |
+Reviewers and graders can verify the system using these testing scenarios:
+
+| # | Test Scenario | User Input | Expected Assistant Output |
 |---|---|---|---|
-| 1 | **Konsultasi Resep + Defisit Kalori** | *"Saya punya dada ayam dan jamur tiram di kulkas. Buatkan menu makan malam di bawah 250 kkal."* | Bot mengambil konteks Pepes Ayam Jamur dari RAG, menyajikan takaran bahan, cara memasak, dan rincian makronutrien lengkap. |
-| 2 | **Pengujian Persona (Ahli Gizi)** | Ganti persona ke *Ahli Gizi Medis* lalu tanya: *"Mengapa nasi merah lebih disarankan daripada nasi putih?"* | Bot memberikan jawaban ilmiah berbasis Indeks Glikemik, pelepasan insulin bertahap, dan kandungan serat pangan. |
-| 3 | **Filter Alergi** | Isi kolom alergi dengan `Udang, Kacang` lalu minta ide menu makan siang tinggi protein. | Bot menjamin tidak ada olahan udang atau saus kacang, serta memberikan alternatif protein aman (ayam/tahu/tempe). |
-| 4 | **Pengujian Memory Kontekstual** | Lanjutkan percakapan dengan: *"Tolong ganti sumber karbohidratnya dengan kentang rebus dan hitung ulang kalorinya."* | Bot mengingat hidangan sebelumnya dan merevisi takaran gizi sesuai kentang rebus. |
-| 5 | **Pengujian Dynamic Upload RAG** | Unggah file PDF atau TXT catatan resep keluarga di sidebar, lalu tanyakan resep tersebut ke bot. | Bot mengindeks dokumen baru dan mereferensikan sumber dokumen dalam jawaban. |
+| **1** | **Recipe Recommendation & Caloric Deficit** | *"I have chicken breast and oyster mushrooms in my fridge. Suggest a dinner recipe under 250 kcal."* | Retrieves the steamed chicken recipe from the RAG knowledge base, formats measured ingredients, instructions, and provides a clear macro breakdown. |
+| **2** | **Persona Switching** | Change persona to *Clinical Dietitian* and ask: *"Why is brown rice preferred over white rice?"* | Explains glycemic index (GI), fiber content, and insulin sensitivity using evidence-based scientific terminology. |
+| **3** | **Allergy Constraint Validation** | Enter `Shrimp, Peanuts` in the allergy input, then request a high-protein lunch suggestion. | Guaranteed exclusion of shellfish or peanut dressings, with safe alternative substitutions provided. |
+| **4** | **Multi-Turn Context Revision** | Follow up with: *"Replace the carbohydrate source with boiled potatoes and recalculate the macros."* | Accurately remembers prior dish context and recalculates caloric and carbohydrate values based on boiled potatoes. |
+| **5** | **Dynamic RAG File Ingestion** | Upload a custom PDF or TXT nutrition note in the sidebar and query its contents. | Parses new document chunks, updates the vector store, and cites the newly uploaded file in the response. |
 
 ---
 
-## 📸 7. Tampilan Antarmuka (Screenshots)
+## 📸 7. User Interface Screenshots
 
-> *Berikut adalah tangkapan layar antarmuka pengguna NutriChef AI yang menunjukkan fitur sidebar parameter kreatif, chat multi-turn, kartu rekomendasi resep, dan integrasi RAG:*
+> *Screenshots demonstrating the sidebar configuration, conversational interface, recipe cards, and RAG citations:*
 
-### Tangkapan Layar 1: Halaman Utama & Sidebar Parameter Kreatif
-*(Lampirkan screenshot tampilan beranda aplikasi dengan sidebar konfigurasi persona, target diet, dan model di sini)*  
-![Screenshot Beranda](docs/screenshots/ui_main.png)
+### Screenshot 1: Main Dashboard & Parameter Sidebar
+![Dashboard & Sidebar](docs/screenshots/ui_main.png)
 
-### Tangkapan Layar 2: Sesi Percakapan Rekomendasi Resep & Rincian Gizi
-*(Lampirkan screenshot respon rekomendasi menu terstruktur beserta rincian kalori & makronutrien)*  
-![Screenshot Respon Kartu Resep](docs/screenshots/ui_chat_recipe.png)
+### Screenshot 2: Recipe Card & Nutrition Breakdown
+![Recipe Recommendation](docs/screenshots/ui_chat_recipe.png)
 
-### Tangkapan Layar 3: Fitur Kutipan RAG & Riwayat Multi-turn
-*(Lampirkan screenshot expander referensi data RAG dan konteks percakapan bertahap)*  
-![Screenshot Fitur RAG](docs/screenshots/ui_rag_context.png)
+### Screenshot 3: Retrieved Knowledge Base Citations (RAG)
+![RAG Expander & Sources](docs/screenshots/ui_rag_context.png)
 
 ---
 
-## 👨‍💻 Kontributor
-- **Nama Mahasiswa**: [Nama Anda]
-- **NIM**: [NIM Anda]
-- **Mata Kuliah / Program**: Final Project AI & NLP Chatbot Development
+## 🛡️ 8. Security, Limitations & Future Work
+
+- **Current Environment**: The application is tailored for single-user local deployment (`localhost`). Sensitive credentials are kept out of source control using `.gitignore` and `python-dotenv`.
+- **Future Production Enhancements**:
+  - Implement request rate-limiting to mitigate potential Denial of Service (DoS) attacks in public cloud deployments.
+  - Implement strict server-side input sanitization for user-supplied dietary restrictions to prevent indirect prompt injection.
+  - Integrate user authentication and persistent database storage (PostgreSQL / Supabase) for user profile histories.
+
+---
+
+## 👨‍💻 Author & Attribution
+- **Project**: Final Project — AI & NLP Chatbot Development
+- **Developer**: [Your Name / Richtjhie]
+- **Institution / Course**: Final Project AI / LLM Track
