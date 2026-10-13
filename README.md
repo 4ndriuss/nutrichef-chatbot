@@ -104,8 +104,6 @@ nutrichef-ai/
 │       ├── resep_sehat_nusantara.md    # Healthy recipe catalog with macro breakdowns
 │       ├── tabel_nutrisi_bahan.md      # Calorie and macronutrient reference tables
 │       └── panduan_diet_terstruktur.md # Clinical diet handbooks & allergy substitutions
-├── docs/
-│   └── screenshots/            # UI screenshots for final project deliverables
 ├── .env.example                # Environment variable configuration template
 ├── .gitignore                  # Git ignore rules (protects credentials and cache)
 ├── requirements.txt            # Python package dependencies
@@ -171,34 +169,4 @@ Reviewers and graders can verify the system using these testing scenarios:
 | **4** | **Multi-Turn Context Revision** | Follow up with: *"Replace the carbohydrate source with boiled potatoes and recalculate the macros."* | Accurately remembers prior dish context and recalculates caloric and carbohydrate values based on boiled potatoes. |
 | **5** | **Dynamic RAG File Ingestion** | Upload a custom PDF or TXT nutrition note in the sidebar and query its contents. | Parses new document chunks, updates the vector store, and cites the newly uploaded file in the response. |
 
----
 
-## 📸 7. User Interface Screenshots
-
-> *Screenshots demonstrating the sidebar configuration, conversational interface, recipe cards, and RAG citations:*
-
-### Screenshot 1: Main Dashboard & Parameter Sidebar
-![Dashboard & Sidebar](docs/screenshots/ui_main.png)
-
-### Screenshot 2: Recipe Card & Nutrition Breakdown
-![Recipe Recommendation](docs/screenshots/ui_chat_recipe.png)
-
-### Screenshot 3: Retrieved Knowledge Base Citations (RAG)
-![RAG Expander & Sources](docs/screenshots/ui_rag_context.png)
-
----
-
-## 🛡️ 8. Security, Limitations & Future Work
-
-- **Current Environment**: The application is tailored for single-user local deployment (`localhost`). Sensitive credentials are kept out of source control using `.gitignore` and `python-dotenv`.
-- **Future Production Enhancements**:
-  - Implement request rate-limiting to mitigate potential Denial of Service (DoS) attacks in public cloud deployments.
-  - Implement strict server-side input sanitization for user-supplied dietary restrictions to prevent indirect prompt injection.
-  - Integrate user authentication and persistent database storage (PostgreSQL / Supabase) for user profile histories.
-
----
-
-## 👨‍💻 Author & Attribution
-- **Project**: Final Project — AI & NLP Chatbot Development
-- **Developer**: [Your Name / Richtjhie]
-- **Institution / Course**: Final Project AI / LLM Track
