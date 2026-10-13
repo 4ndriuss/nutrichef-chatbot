@@ -99,16 +99,24 @@ with st.sidebar:
     )
     
     # Pilihan Model Groq
-    model_choice = st.selectbox(
+    model_options = [
+        "qwen/qwen3.8-27b",
+        "qwen-2.5-32b",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "Input Model Kustom..."
+    ]
+    selected_model_option = st.selectbox(
         "Model LLM Groq",
-        options=[
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768"
-        ],
+        options=model_options,
         index=0,
-        help="Llama 3.3 70B memberikan penalaran resep & gizi terbaik. Llama 3.1 8B memberikan respon super cepat."
+        help="qwen/qwen3.8-27b merupakan model reasoning & percakapan terbaru di Groq yang sangat cepat dan akurat."
     )
+    if selected_model_option == "Input Model Kustom...":
+        model_choice = st.text_input("Ketik Model ID Groq", value="qwen/qwen3.8-27b")
+    else:
+        model_choice = selected_model_option
     
     # Slider Kreativitas (Temperature)
     temperature = st.slider(

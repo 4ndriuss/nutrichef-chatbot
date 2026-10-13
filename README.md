@@ -39,7 +39,7 @@ Proyek ini mengimplementasikan parameter konfigurasi kreatif yang dapat disesuai
 Pengguna dapat memasukkan bahan yang dihindari (misal: *kacang, udang, gluten, laktosa*). NutriChef AI akan memvalidasi resep dan memberikan substitusi bahan yang aman tanpa mengurangi kualitas nutrisi.
 
 ### D. Parameter Teknis Model AI (Groq Engine)
-- **Model Switcher**: Pilihan model antara `llama-3.3-70b-versatile` (penalaran terbaik) dan `llama-3.1-8b-instant` (kecepatan respon instan).
+- **Model Switcher**: Pilihan model unggulan seperti `qwen/qwen3.8-27b` (model reasoning & chat performa tinggi), `qwen-2.5-32b`, `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, serta opsi input model kustom.
 - **Temperature Slider**: Mengatur tingkat kreativitas respons LLM dari 0.0 (deterministik/faktual) hingga 1.0 (kreatif).
 
 ### E. Hybrid RAG (Retrieval-Augmented Generation)
