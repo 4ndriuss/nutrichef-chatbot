@@ -1,7 +1,7 @@
 # 🥗 NutriChef AI — Smart Nutrition & Meal Planning Assistant
 
 > **Final Project: AI-Powered Conversational Assistant with LLMs and Hybrid Retrieval-Augmented Generation (RAG)**  
-> Built with **Python**, **Streamlit**, **Groq Cloud API (Qwen 3.8 27B & Llama 3.3 70B)**, and a **Dual-Engine Vector Store (ChromaDB + BM25)**.
+> Built with **Python**, **Streamlit**, **Groq Cloud API (Qwen 3.8 27B & Llama 3.3 70B)**, and **Hybrid Retrieval (BM25 + ChromaDB, fused with Reciprocal Rank Fusion)**.
 
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
@@ -38,7 +38,8 @@ NutriChef AI exposes an interactive sidebar with several configurable creative p
 - **Clean Bulking (Muscle Gain)**: Controlled calorie surplus with nutrient-dense complex carbs and lean protein sources.
 - **Low Carbohydrate / Ketogenic**: Strict carb restriction (<50g/day) to encourage metabolic ketosis.
 - **Low Sugar (Diabetes-Friendly)**: Low-GI ingredients (<55) designed to prevent blood glucose spikes.
-- **Low Sodium (DASH Diet / Hypertension)**: Sodium restriction (<1,500 mg/day) using aromatic herbs and spices.
+- **Low Sodium (DASH Diet / Hypertension)**: Sodium restriction (<1,500–2,000 mg/day) using aromatic herbs and spices.
+- **Balanced Nutrition (General Healthy Lifestyle)**: Balanced daily macros (≈50% carbs, 25% protein, 25% fat) from fresh whole foods.
 
 ### C. Automated Allergy & Restriction Filter
 Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). The assistant dynamically filters out restricted ingredients and suggests safe culinary substitutions without compromising nutritional value.
@@ -49,8 +50,9 @@ Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). 
   - `qwen-2.5-32b`
   - `llama-3.3-70b-versatile`
   - `llama-3.1-8b-instant` (Ultra-low latency streaming).
+  - `mixtral-8x7b-32768`
   - *Custom Model ID input option*.
-- **Creativity Slider (Temperature)**: Adjustable from `0.0` (factual, strictly nutritional) to `1.0` (creative culinary brainstorming).
+- **Creativity Slider (Temperature)**: Adjustable from `0.0` (factual, strictly nutritional) to `1.0` (creative culinary brainstorming); default `0.6`.
 
 ### E. Hybrid RAG (Retrieval-Augmented Generation)
 - **Curated Knowledge Base**: Includes structured nutritional tables (Indonesian TKPI & USDA FoodData Central), evidence-based diet handbooks, and healthy recipes.
@@ -58,7 +60,9 @@ Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). 
 - **Hybrid Retrieval**: Every question is searched by both a deterministic **BM25** lexical engine and **ChromaDB** semantic search (`all-MiniLM-L6-v2` embeddings); their rankings are merged with **Reciprocal Rank Fusion (RRF)**. If ChromaDB or its embedding model is unavailable (e.g. offline), retrieval transparently runs on BM25 alone and the sidebar shows which engines are active.
 
 ### F. Multi-turn Memory & Export
-- **Context-Aware Dialogue**: Maintains sliding-window conversational memory to support follow-up adjustments (e.g., *"Replace the chicken breast with tofu and recalculate the calories"*).
+- **Context-Aware Dialogue**: Remembers the last 3 question–answer turns to support follow-up adjustments (e.g., *"Replace the chicken breast with tofu and recalculate the calories"*).
+- **Knowledge Base Citations**: Each answer can show the knowledge base excerpts it was grounded in (toggle *"Tampilkan Kutipan RAG di Jawaban"* in the sidebar).
+- **Quick-Start Questions**: One-click preset questions on the welcome screen (high-protein chicken recipe, TDEE calculation, diabetes-friendly breakfast).
 - **Export Chat Transcript**: One-click download of the consultation history in clean Markdown format (`.md`).
 - **Session Reset**: Instant context clearance button.
 
@@ -73,7 +77,7 @@ flowchart TD
     
     subgraph RAG_Pipeline [Hybrid RAG Pipeline]
         KB[(Curated Knowledge Base: Recipes & Nutrition Tables)] --> Splitter[Markdown / PDF Excerpt Splitter]
-        Upload[Dynamic User Upload: PDF/TXT] --> Splitter
+        Upload[Dynamic User Upload: PDF/TXT/MD] --> Splitter
         Splitter --> BM25[(BM25 Lexical Index)]
         Splitter --> VectorStore[(ChromaDB Vector Store)]
         UI -->|Query| Retriever[Hybrid Retriever: RRF Fusion]
@@ -97,7 +101,7 @@ flowchart TD
 ## 📁 4. Project Directory Structure
 
 ```text
-nutrichef-ai/
+nutrichef-chatbot/
 ├── app.py                      # Main Streamlit application & interactive UI
 ├── consultation.py             # Consultation: turn history, RAG retrieval, prompt assembly, LLM streaming
 ├── llm.py                      # Groq adapter for the LLM port
@@ -112,6 +116,8 @@ nutrichef-ai/
 ├── .env.example                # Environment variable configuration template
 ├── .gitignore                  # Git ignore rules (protects credentials and cache)
 ├── requirements.txt            # Python package dependencies
+├── pytest.ini                  # pytest configuration (lets tests import the app modules)
+├── LICENSE                     # MIT license
 └── README.md                   # Comprehensive project documentation
 ```
 
@@ -127,8 +133,8 @@ nutrichef-ai/
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/<your-username>/nutrichef-ai.git
-   cd nutrichef-ai
+   git clone https://github.com/4ndriuss/nutrichef-chatbot.git
+   cd nutrichef-chatbot
    ```
 
 2. **Create and Activate a Virtual Environment:**
@@ -159,6 +165,7 @@ nutrichef-ai/
    streamlit run app.py
    ```
    The application will automatically open in your default browser at **`http://localhost:8501`**.
+   *Note: on the first launch ChromaDB downloads its embedding model (~80 MB, cached in `~/.cache/chroma`), so startup takes longer. Without internet access the app still works, using BM25 retrieval only (the sidebar shows the active engine).*
 
 6. **Run the Tests (Optional):**
    ```bash
@@ -174,8 +181,8 @@ Reviewers and graders can verify the system using these testing scenarios:
 
 | # | Test Scenario | User Input | Expected Assistant Output |
 |---|---|---|---|
-| **1** | **Recipe Recommendation & Caloric Deficit** | *"I have chicken breast and oyster mushrooms in my fridge. Suggest a dinner recipe under 250 kcal."* | Retrieves the steamed chicken recipe from the RAG knowledge base, formats measured ingredients, instructions, and provides a clear macro breakdown. |
-| **2** | **Persona Switching** | Change persona to *Clinical Dietitian* and ask: *"Why is brown rice preferred over white rice?"* | Explains glycemic index (GI), fiber content, and insulin sensitivity using evidence-based scientific terminology. |
+| **1** | **Recipe Recommendation & Caloric Deficit** | *"Saya punya dada ayam dan jamur tiram di kulkas. Sarankan resep makan malam di bawah 250 kkal."* (I have chicken breast and oyster mushrooms in my fridge. Suggest a dinner recipe under 250 kcal.) | Retrieves the Pepes Ayam Kemangi Jamur recipe (ingredients and cooking steps) from the RAG knowledge base, formats measured ingredients, instructions, and provides a clear macro breakdown. |
+| **2** | **Persona Switching** | Change persona to *Clinical Dietitian* and ask: *"Kenapa beras merah lebih baik dari nasi putih?"* (Why is brown rice preferred over white rice?) | Explains glycemic index (GI), fiber content, and insulin sensitivity using evidence-based scientific terminology. |
 | **3** | **Allergy Constraint Validation** | Enter `Shrimp, Peanuts` in the allergy input, then request a high-protein lunch suggestion. | Guaranteed exclusion of shellfish or peanut dressings, with safe alternative substitutions provided. |
 | **4** | **Multi-Turn Context Revision** | Follow up with: *"Replace the carbohydrate source with boiled potatoes and recalculate the macros."* | Accurately remembers prior dish context and recalculates caloric and carbohydrate values based on boiled potatoes. |
 | **5** | **Dynamic RAG File Ingestion** | Upload a custom PDF or TXT nutrition note in the sidebar and query its contents. | Splits the new document into excerpts, indexes them in both retrieval engines, and cites the newly uploaded file in the response. |
