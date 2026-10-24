@@ -1,6 +1,6 @@
 # 🥗 NutriChef AI — Smart Nutrition & Meal Planning Assistant
 
-> **Final Project: AI-Powered Conversational Assistant with LLMs and Hybrid Retrieval-Augmented Generation (RAG)**  
+> **AI-Powered Conversational Assistant with LLMs and Hybrid Retrieval-Augmented Generation (RAG)**  
 > Built with **Python**, **Streamlit**, **Groq Cloud API (Qwen 3.8 27B & Llama 3.3 70B)**, and **Hybrid Retrieval (BM25 + ChromaDB, fused with Reciprocal Rank Fusion)**.
 
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
