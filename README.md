@@ -72,10 +72,10 @@ flowchart TD
     Sidebar[Sidebar Controls] -->|Persona, Diet Goal, Allergies, Temperature| SystemPromptBuilder[System Prompt Generator]
     
     subgraph RAG_Pipeline [Hybrid RAG Pipeline]
-        KB[(Curated Knowledge Base: Recipes & Nutrition Tables)] --> Chunker[Markdown / PDF Chunker]
-        Upload[Dynamic User Upload: PDF/TXT] --> Chunker
-        Chunker --> BM25[(BM25 Lexical Index)]
-        Chunker --> VectorStore[(ChromaDB Vector Store)]
+        KB[(Curated Knowledge Base: Recipes & Nutrition Tables)] --> Splitter[Markdown / PDF Excerpt Splitter]
+        Upload[Dynamic User Upload: PDF/TXT] --> Splitter
+        Splitter --> BM25[(BM25 Lexical Index)]
+        Splitter --> VectorStore[(ChromaDB Vector Store)]
         UI -->|Query| Retriever[Hybrid Retriever: RRF Fusion]
         BM25 --> Retriever
         VectorStore --> Retriever
@@ -179,6 +179,6 @@ Reviewers and graders can verify the system using these testing scenarios:
 | **2** | **Persona Switching** | Change persona to *Clinical Dietitian* and ask: *"Why is brown rice preferred over white rice?"* | Explains glycemic index (GI), fiber content, and insulin sensitivity using evidence-based scientific terminology. |
 | **3** | **Allergy Constraint Validation** | Enter `Shrimp, Peanuts` in the allergy input, then request a high-protein lunch suggestion. | Guaranteed exclusion of shellfish or peanut dressings, with safe alternative substitutions provided. |
 | **4** | **Multi-Turn Context Revision** | Follow up with: *"Replace the carbohydrate source with boiled potatoes and recalculate the macros."* | Accurately remembers prior dish context and recalculates caloric and carbohydrate values based on boiled potatoes. |
-| **5** | **Dynamic RAG File Ingestion** | Upload a custom PDF or TXT nutrition note in the sidebar and query its contents. | Parses new document chunks, updates the vector store, and cites the newly uploaded file in the response. |
+| **5** | **Dynamic RAG File Ingestion** | Upload a custom PDF or TXT nutrition note in the sidebar and query its contents. | Splits the new document into excerpts, indexes them in both retrieval engines, and cites the newly uploaded file in the response. |
 
 

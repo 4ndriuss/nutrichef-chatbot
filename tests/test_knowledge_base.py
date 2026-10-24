@@ -27,10 +27,14 @@ Pilih bahan dengan indeks glikemik di bawah 55 seperti oatmeal dan beras merah.
 """
 
 
-ABCD = "\n\n".join(
-    f"## {name}\nBagian {name} berisi teks contoh yang cukup panjang untuk menjadi Excerpt."
-    for name in ["Alpha", "Bravo", "Charlie", "Delta"]
-)
+def sections(names):
+    """Document Markdown dengan satu Excerpt berjudul untuk setiap nama."""
+    return "\n\n".join(
+        f"## {name}\nBagian {name} berisi teks contoh yang cukup panjang untuk menjadi Excerpt." for name in names
+    )
+
+
+ABCD = sections(["Alpha", "Bravo", "Charlie", "Delta"])
 
 
 class FakeEngine:
@@ -52,8 +56,7 @@ class FakeEngine:
         self.searches += 1
         if self.fail_on == "search":
             raise RuntimeError("engine gagal saat pencarian")
-        by_title = {e.title: e for e in self.excerpts}
-        return [by_title[title] for title in self.ranking if title in by_title][:k]
+        return [e for title in self.ranking for e in self.excerpts if e.title == title][:k]
 
 
 def topics(sources):
@@ -233,12 +236,43 @@ def test_chromadb_engine_finds_semantically_matching_excerpts_including_uploads(
 def test_weak_matches_found_by_both_engines_do_not_outvote_a_top_hit(tmp_path):
     names = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf",
              "Hotel", "India", "Juliet", "Kilo", "Lima"]
-    (tmp_path / "nato.md").write_text("\n\n".join(
-        f"## {name}\nBagian {name} berisi teks contoh yang cukup panjang untuk menjadi Excerpt." for name in names
-    ), encoding="utf-8")
+    (tmp_path / "nato.md").write_text(sections(names), encoding="utf-8")
     lexical = FakeEngine("Lexical", ranking=["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf"])
     semantic = FakeEngine("Semantic", ranking=["Hotel", "India", "Juliet", "Kilo", "Lima", "Foxtrot", "Golf"])
     knowledge_base = KnowledgeBase(directory=tmp_path, engines=[lexical, semantic])
 
     # Foxtrot & Golf hanya kecocokan lemah (peringkat 6-7) di kedua engine; tidak boleh mengalahkan peringkat #1
     assert topics(knowledge_base.find_sources("apa saja")) == ["Alpha", "Hotel", "Bravo"]
+
+
+def test_identical_excerpts_uploaded_twice_are_ranked_separately(tmp_path):
+    (tmp_path / "abcd.md").write_text(ABCD, encoding="utf-8")
+    lexical = FakeEngine("Lexical", ranking=["Alpha", "Echo"])
+    semantic = FakeEngine("Semantic", ranking=["Delta"])
+    knowledge_base = KnowledgeBase(directory=tmp_path, engines=[lexical, semantic])
+    for _ in range(2):
+        knowledge_base.add_document("echo.txt", io.BytesIO(sections(["Echo"]).encode()))
+
+    # Dua salinan Echo (peringkat 2 & 3) tidak boleh digabung menjadi satu suara yang mengalahkan peringkat #1
+    assert topics(knowledge_base.find_sources("apa saja")) == ["Alpha", "Delta", "Echo"]
+
+
+def test_engine_failing_on_a_later_upload_is_dropped_and_the_upload_still_counts(tmp_path):
+    (tmp_path / "abcd.md").write_text(ABCD, encoding="utf-8")
+    broken = FakeEngine("ChromaDB", ranking=["Echo"])
+    knowledge_base = KnowledgeBase(directory=tmp_path, engines=[FakeEngine("BM25", ranking=["Echo"]), broken])
+    broken.fail_on = "add"
+
+    added = knowledge_base.add_document("echo.txt", io.BytesIO(sections(["Echo"]).encode()))
+
+    assert added == 1
+    assert knowledge_base.excerpt_count == 5
+    assert knowledge_base.engine_name == "BM25"
+    assert topics(knowledge_base.find_sources("apa saja")) == ["Echo"]
+
+
+def test_default_engines_put_bm25_first_so_fusion_ties_follow_bm25(tmp_path):
+    pytest.importorskip("chromadb")
+
+    # Tanpa Document, ChromaDB tidak perlu mengunduh model embedding
+    assert KnowledgeBase(directory=tmp_path).engine_name == "Hybrid (BM25 + ChromaDB)"

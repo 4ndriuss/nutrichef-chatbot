@@ -8,9 +8,11 @@ import re
 import uuid
 from collections import Counter
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import BinaryIO, Callable, Dict, List, Optional, Protocol, TypeVar, Union
 
 import pypdf
+
+T = TypeVar("T")
 
 # Directory path default untuk Document kurasi
 KNOWLEDGE_BASE_DIR = os.path.join(os.path.dirname(__file__), "data", "knowledge_base")
@@ -34,11 +36,20 @@ STOPWORDS = {
 class Excerpt:
     """Satu bagian berjudul dari sebuah Document; unit yang diambil dari Knowledge base."""
     content: str
-    source: str
+    document: str
     title: str = ""
 
 
-def split_into_excerpts(text: str, source_name: str) -> List[Excerpt]:
+class RetrievalEngine(Protocol):
+    """Interface engine retrieval di seam Knowledge base: mengindeks Excerpt dan mengurutkannya per pertanyaan."""
+    name: str
+
+    def add(self, excerpts: List[Excerpt]) -> None: ...
+
+    def search(self, question: str, k: int) -> List[Excerpt]: ...
+
+
+def split_into_excerpts(text: str, document_name: str) -> List[Excerpt]:
     """
     Memecah teks Markdown berdasarkan header (## atau ###) agar setiap babak/resep
     menjadi satu Excerpt utuh yang mempertahankan konteks semantiknya.
@@ -55,7 +66,7 @@ def split_into_excerpts(text: str, source_name: str) -> List[Excerpt]:
         # Ekstrak judul dari baris pertama jika ada
         lines = clean_section.split('\n')
         first_line = lines[0].strip()
-        title = first_line.lstrip('#').strip() if first_line.startswith('#') else source_name
+        title = first_line.lstrip('#').strip() if first_line.startswith('#') else document_name
 
         # Jika bagian sangat panjang (> 1800 karakter), pecah lagi dengan paragraf
         if len(clean_section) > 1800:
@@ -66,17 +77,17 @@ def split_into_excerpts(text: str, source_name: str) -> List[Excerpt]:
                     current_sub += p + "\n\n"
                 else:
                     if current_sub.strip():
-                        excerpts.append(Excerpt(current_sub.strip(), source_name, title))
+                        excerpts.append(Excerpt(current_sub.strip(), document_name, title))
                     current_sub = p + "\n\n"
             if current_sub.strip():
-                excerpts.append(Excerpt(current_sub.strip(), source_name, title))
+                excerpts.append(Excerpt(current_sub.strip(), document_name, title))
         else:
-            excerpts.append(Excerpt(clean_section, source_name, title))
+            excerpts.append(Excerpt(clean_section, document_name, title))
 
     return excerpts
 
 
-def extract_text_from_pdf(file) -> str:
+def extract_text_from_pdf(file: BinaryIO) -> str:
     """Mengekstrak teks dari file PDF yang diunggah pengguna."""
     reader = pypdf.PdfReader(file)
     extracted = []
@@ -188,9 +199,9 @@ class ChromaEngine:
         return [self._excerpts[int(excerpt_id.split("_")[1])] for excerpt_id in results["ids"][0]]
 
 
-def default_engines() -> list:
-    """BM25 selalu tersedia; ChromaDB ikut jika pustakanya terpasang."""
-    engines = [BM25Engine()]
+def default_engines() -> List[RetrievalEngine]:
+    """BM25 selalu tersedia dan ditaruh pertama (skor seri mengikuti BM25); ChromaDB ikut jika pustakanya terpasang."""
+    engines: List[RetrievalEngine] = [BM25Engine()]
     try:
         engines.append(ChromaEngine())
     except Exception as e:
@@ -202,16 +213,26 @@ def reciprocal_rank_fusion(rankings: List[List[Excerpt]]) -> List[Excerpt]:
     """
     Menggabungkan peringkat beberapa engine: skor tiap Excerpt = Σ 1/(RRF_K + rank).
     Skor seri mengikuti urutan engine pertama (urutan kemunculan dipertahankan oleh sort yang stabil).
+    Excerpt dibedakan berdasarkan identitas, bukan nilai: dua Excerpt identik (mis. Document yang diunggah
+    dua kali) dihitung terpisah agar tidak digabung menjadi satu suara ganda.
     """
-    scores: Dict[Excerpt, float] = {}
+    excerpts: Dict[int, Excerpt] = {}
+    scores: Dict[int, float] = {}
     for ranking in rankings:
         for rank, excerpt in enumerate(ranking, 1):
-            scores[excerpt] = scores.get(excerpt, 0.0) + 1 / (RRF_K + rank)
-    return sorted(scores, key=lambda excerpt: scores[excerpt], reverse=True)
+            excerpts[id(excerpt)] = excerpt
+            scores[id(excerpt)] = scores.get(id(excerpt), 0.0) + 1 / (RRF_K + rank)
+    return [excerpts[key] for key in sorted(scores, key=lambda key: scores[key], reverse=True)]
 
 
 class KnowledgeBase:
-    def __init__(self, directory: str = KNOWLEDGE_BASE_DIR, engines=None):
+    """
+    Knowledge base NutriChef AI: semua Document (kurasi & unggahan) yang menjadi sumber Sources.
+    Dibangun sekali dengan memuat Document kurasi dari direktorinya. Setiap pertanyaan dicari oleh semua
+    engine aktif lalu peringkatnya digabung (RRF); engine yang gagal dilepas permanen.
+    """
+    def __init__(self, directory: Union[str, os.PathLike] = KNOWLEDGE_BASE_DIR,
+                 engines: Optional[List[RetrievalEngine]] = None):
         self._excerpts: List[Excerpt] = []
         self._engines = list(engines) if engines is not None else default_engines()
         self._add_excerpts(self._load_directory(directory))
@@ -229,19 +250,14 @@ class KnowledgeBase:
 
     def find_sources(self, question: str) -> str:
         """Mengambil Excerpt paling relevan dan memformatnya sebagai Sources untuk system prompt."""
-        rankings = []
-        for engine in list(self._engines):
-            try:
-                rankings.append(engine.search(question, CANDIDATES_PER_ENGINE))
-            except Exception as e:
-                self._drop_engine(engine, e)
+        rankings = self._call_engines(lambda engine: engine.search(question, CANDIDATES_PER_ENGINE))
         matched = reciprocal_rank_fusion(rankings)[:SOURCES_TOP_K]
         formatted = []
         for i, excerpt in enumerate(matched, 1):
-            formatted.append(f"[Konteks #{i} | Sumber: {excerpt.source} | Topik: {excerpt.title}]\n{excerpt.content}")
+            formatted.append(f"[Konteks #{i} | Sumber: {excerpt.document} | Topik: {excerpt.title}]\n{excerpt.content}")
         return "\n\n".join(formatted)
 
-    def add_document(self, filename: str, file) -> int:
+    def add_document(self, filename: str, file: BinaryIO) -> int:
         """Memproses Document PDF atau teks yang diunggah pengguna; mengembalikan jumlah Excerpt baru."""
         if filename.lower().endswith(".pdf"):
             content = extract_text_from_pdf(file)
@@ -250,11 +266,11 @@ class KnowledgeBase:
 
         if not content.strip():
             return 0
-        excerpts = split_into_excerpts(content, source_name=f"Upload: {filename}")
+        excerpts = split_into_excerpts(content, document_name=f"Upload: {filename}")
         self._add_excerpts(excerpts)
         return len(excerpts)
 
-    def _load_directory(self, directory) -> List[Excerpt]:
+    def _load_directory(self, directory: Union[str, os.PathLike]) -> List[Excerpt]:
         """Membaca semua Document kurasi (.md/.txt) di direktori Knowledge base."""
         excerpts: List[Excerpt] = []
         if os.path.exists(directory):
@@ -264,20 +280,29 @@ class KnowledgeBase:
                     try:
                         with open(filepath, "r", encoding="utf-8") as f:
                             content = f.read()
-                        excerpts.extend(split_into_excerpts(content, source_name=filename))
+                        excerpts.extend(split_into_excerpts(content, document_name=filename))
                     except Exception as e:
                         print(f"Gagal membaca {filename}: {e}")
         return excerpts
 
     def _add_excerpts(self, excerpts: List[Excerpt]):
         self._excerpts.extend(excerpts)
+        self._call_engines(lambda engine: engine.add(excerpts))
+
+    def _call_engines(self, call: Callable[[RetrievalEngine], T]) -> List[T]:
+        """Menjalankan call di setiap engine aktif; engine yang gagal dilepas, hasil engine lain tetap dipakai."""
+        results = []
         for engine in list(self._engines):
             try:
-                engine.add(excerpts)
+                results.append(call(engine))
             except Exception as e:
                 self._drop_engine(engine, e)
+        return results
 
-    def _drop_engine(self, engine, error: Exception):
+    def _drop_engine(self, engine: RetrievalEngine, error: Exception):
         """Engine yang gagal dilepas permanen agar tidak dicoba ulang di setiap pertanyaan."""
+        # Knowledge base dibagi antar sesi; sesi lain mungkin sudah melepas engine yang sama
+        if engine not in self._engines:
+            return
         self._engines.remove(engine)
         print(f"Engine {engine.name} gagal dan dinonaktifkan, lanjut dengan {self.engine_name}: {error}")
