@@ -55,7 +55,7 @@ Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). 
 ### E. Hybrid RAG (Retrieval-Augmented Generation)
 - **Curated Knowledge Base**: Includes structured nutritional tables (Indonesian TKPI & USDA FoodData Central), evidence-based diet handbooks, and healthy recipes.
 - **Dynamic File Ingestion**: Users can upload supplementary documents (PDF, TXT, Markdown) directly through the UI, which are immediately parsed and embedded into the vector store.
-- **Hybrid Retrieval**: Every question is searched by both a deterministic **BM25** lexical engine and **ChromaDB** semantic search (`all-MiniLM-L6-v2` embeddings); their rankings are merged with **Reciprocal Rank Fusion (RRF)**. If ChromaDB or its embedding model is unavailable (e.g. offline), retrieval transparently runs on BM25 alone and the sidebar shows which engines are active. See [ADR-0001](docs/adr/0001-hybrid-retrieval-keeps-chromadb.md) for why both engines are kept.
+- **Hybrid Retrieval**: Every question is searched by both a deterministic **BM25** lexical engine and **ChromaDB** semantic search (`all-MiniLM-L6-v2` embeddings); their rankings are merged with **Reciprocal Rank Fusion (RRF)**. If ChromaDB or its embedding model is unavailable (e.g. offline), retrieval transparently runs on BM25 alone and the sidebar shows which engines are active.
 
 ### F. Multi-turn Memory & Export
 - **Context-Aware Dialogue**: Maintains sliding-window conversational memory to support follow-up adjustments (e.g., *"Replace the chicken breast with tofu and recalculate the calories"*).
@@ -112,7 +112,6 @@ nutrichef-ai/
 ├── .env.example                # Environment variable configuration template
 ├── .gitignore                  # Git ignore rules (protects credentials and cache)
 ├── requirements.txt            # Python package dependencies
-├── requirements-dev.txt        # Development dependencies (adds pytest)
 └── README.md                   # Comprehensive project documentation
 ```
 
@@ -163,7 +162,7 @@ nutrichef-ai/
 
 6. **Run the Tests (Optional):**
    ```bash
-   pip install -r requirements-dev.txt
+   pip install pytest
    pytest
    ```
 
