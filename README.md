@@ -97,8 +97,11 @@ flowchart TD
 ```text
 nutrichef-ai/
 ├── app.py                      # Main Streamlit application & interactive UI
+├── consultation.py             # Consultation: turn history, RAG retrieval, prompt assembly, LLM streaming
+├── llm.py                      # Groq adapter for the LLM port
 ├── rag_pipeline.py             # RAG engine (ChromaDB vector store, BM25 fallback, PDF parser)
 ├── prompts.py                  # Persona definitions, clinical diet rules, and prompt templates
+├── tests/                      # pytest suite (runs offline with fake LLM & knowledge base)
 ├── data/
 │   └── knowledge_base/         # Curated factual nutrition datasets
 │       ├── resep_sehat_nusantara.md    # Healthy recipe catalog with macro breakdowns
@@ -107,6 +110,7 @@ nutrichef-ai/
 ├── .env.example                # Environment variable configuration template
 ├── .gitignore                  # Git ignore rules (protects credentials and cache)
 ├── requirements.txt            # Python package dependencies
+├── requirements-dev.txt        # Development dependencies (adds pytest)
 └── README.md                   # Comprehensive project documentation
 ```
 
@@ -154,6 +158,12 @@ nutrichef-ai/
    streamlit run app.py
    ```
    The application will automatically open in your default browser at **`http://localhost:8501`**.
+
+6. **Run the Tests (Optional):**
+   ```bash
+   pip install -r requirements-dev.txt
+   pytest
+   ```
 
 ---
 

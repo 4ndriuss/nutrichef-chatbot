@@ -6,9 +6,10 @@ Streamlit Application with Groq LLM & Hybrid RAG System
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from groq import Groq
+from consultation import Consultation, Profile
+from llm import GroqLLM
 from rag_pipeline import RAGPipeline
-from prompts import build_system_prompt, PERSONA_PROMPTS, DIET_GOAL_GUIDELINES
+from prompts import PERSONA_PROMPTS, DIET_GOAL_GUIDELINES
 
 # Muat variabel lingkungan dari .env jika ada
 load_dotenv()
@@ -76,9 +77,10 @@ def get_rag_pipeline():
 
 rag = get_rag_pipeline()
 
-# Inisialisasi Riwayat Percakapan
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Inisialisasi Konsultasi (riwayat Turn) per sesi pengguna
+if "consultation" not in st.session_state:
+    st.session_state.consultation = Consultation()
+consultation = st.session_state.consultation
 
 # --- SIDEBAR: Parameter Kreatif & Konfigurasi Sistem ---
 with st.sidebar:
@@ -176,17 +178,13 @@ with st.sidebar:
     col_reset, col_export = st.columns(2)
     with col_reset:
         if st.button("🗑️ Reset Chat", use_container_width=True):
-            st.session_state.messages = []
+            consultation.reset()
             st.rerun()
     with col_export:
-        if st.session_state.messages:
-            chat_export_text = "# Transkrip Konsultasi NutriChef AI\n\n"
-            for m in st.session_state.messages:
-                role_label = "Pengguna" if m["role"] == "user" else "NutriChef AI"
-                chat_export_text += f"### {role_label}:\n{m['content']}\n\n"
+        if consultation.messages:
             st.download_button(
                 label="📥 Unduh Chat",
-                data=chat_export_text,
+                data=consultation.transcript_markdown(),
                 file_name="nutrichef_chat_history.md",
                 mime="text/markdown",
                 use_container_width=True
@@ -210,7 +208,7 @@ with col_head2:
 st.write("")
 
 # Banner Sambutan jika Belum Ada Pesan
-if not st.session_state.messages:
+if not consultation.messages:
     with st.container():
         st.markdown("""
         ### 👋 Selamat Datang di NutriChef AI!
@@ -231,13 +229,18 @@ if not st.session_state.messages:
                 st.session_state.preset_prompt = "Buatkan rekomendasi sarapan lezat dengan indeks glikemik rendah yang aman untuk gula darah."
 
 
-# Render Riwayat Percakapan
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-        if "rag_context" in msg and msg["rag_context"] and show_sources:
-            with st.expander("🔍 Referensi Basis Pengetahuan (RAG Context)"):
-                st.markdown(msg["rag_context"])
+def render_rag_sources(rag_context: str):
+    """Menampilkan kutipan RAG di bawah balasan jika ada dan pengguna mengaktifkannya."""
+    if rag_context and show_sources:
+        with st.expander("🔍 Referensi Basis Pengetahuan (RAG Context)"):
+            st.markdown(rag_context)
+
+
+# Render Riwayat Konsultasi
+for msg in consultation.messages:
+    with st.chat_message(msg.role):
+        st.markdown(msg.content)
+        render_rag_sources(msg.rag_context)
 
 
 # Input Pengguna (Chat Input atau Preset Button)
@@ -253,62 +256,18 @@ if user_prompt:
         st.error("⚠️ Silakan masukkan **Groq API Key** Anda di sidebar terlebih dahulu untuk memulai percakapan!")
         st.stop()
 
-    # 2. Tampilkan pesan user ke UI dan simpan ke memory
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    # 2. Tampilkan pertanyaan pengguna (baru tercatat di Konsultasi setelah balasan selesai)
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
-    # 3. Jalankan Retrieval RAG
-    with st.spinner("Mencari referensi data gizi dan resep relevan..."):
-        retrieved_context_str = rag.format_context_for_prompt(user_prompt, top_k=3)
+    profile = Profile(persona=selected_persona, diet_goal=selected_diet, allergies=user_allergies)
 
-    # 4. Bangun System Prompt sesuai konfigurasi parameter kreatif saat ini
-    system_prompt = build_system_prompt(
-        persona_name=selected_persona,
-        diet_goal=selected_diet,
-        allergies=user_allergies,
-        retrieved_context=retrieved_context_str
-    )
-
-    # 5. Susun Payload Chat History untuk Multi-turn Context Memory
-    chat_payload = [{"role": "system", "content": system_prompt}]
-    # Masukkan riwayat pesan sebelumnya (maksimal 8 putaran terakhir agar konteks tetap fokus & efisien)
-    for prev in st.session_state.messages[-8:]:
-        chat_payload.append({"role": prev["role"], "content": prev["content"]})
-
-    # 6. Panggil LLM Groq dengan Streaming
+    # 3. Jalankan Turn: retrieval RAG + streaming balasan LLM Groq
     with st.chat_message("assistant"):
-        response_placeholder = st.empty()
-        full_response = ""
-        
         try:
-            client = Groq(api_key=groq_api_key)
-            completion = client.chat.completions.create(
-                model=model_choice,
-                messages=chat_payload,
-                temperature=temperature,
-                max_tokens=2048,
-                stream=True
-            )
-            
-            for chunk in completion:
-                token = chunk.choices[0].delta.content or ""
-                full_response += token
-                response_placeholder.markdown(full_response + "▌")
-                
-            response_placeholder.markdown(full_response)
-            
-            # Tampilkan Expander RAG jika ada data terambil
-            if retrieved_context_str and show_sources:
-                with st.expander("🔍 Referensi Basis Pengetahuan (RAG Context)"):
-                    st.markdown(retrieved_context_str)
-                    
-            # Simpan respon asisten ke riwayat percakapan
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": full_response,
-                "rag_context": retrieved_context_str if show_sources else ""
-            })
-            
+            llm = GroqLLM(api_key=groq_api_key, model=model_choice, temperature=temperature)
+            with st.spinner("Mencari referensi data gizi dan resep relevan..."):
+                st.write_stream(consultation.ask(user_prompt, profile, rag, llm))
+            render_rag_sources(consultation.messages[-1].rag_context)
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses permintaan ke Groq API: {e}")
