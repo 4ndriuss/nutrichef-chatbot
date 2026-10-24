@@ -44,7 +44,7 @@ class Consultation:
     """
     Konsultasi antara satu pengguna dan NutriChef AI.
     Hanya menyimpan Turn yang lengkap: pertanyaan dan balasannya dicatat bersamaan
-    setelah streaming selesai, sehingga tidak ada pertanyaan tanpa balasan.
+    setelah streaming selesai, sehingga tidak ada pertanyaan tanpa balasan atau dengan balasan kosong.
     """
     def __init__(self):
         self._turns: List[Turn] = []

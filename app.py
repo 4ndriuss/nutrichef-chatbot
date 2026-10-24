@@ -281,4 +281,4 @@ if user_prompt:
             st.write_stream(spinner_until_first_chunk(reply_stream, "Mencari referensi data gizi dan resep relevan..."))
             render_sources(consultation.turns[-1].sources)
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat memproses permintaan ke Groq API: {e}")
+            st.error(f"Terjadi kesalahan saat menyiapkan jawaban NutriChef AI: {e}")

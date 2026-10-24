@@ -121,11 +121,13 @@ def test_abandoned_stream_records_nothing():
 @pytest.mark.parametrize("chunks", [[], ["", ""], ["  ", "\n"]])
 def test_empty_reply_is_not_a_turn_and_raises(chunks):
     consultation = Consultation()
+    list(consultation.ask("Q1", PROFILE, FakeKnowledgeBase(), FakeLLM(chunks=["A1"])))
+    before = consultation.turns
 
     with pytest.raises(RuntimeError, match="tidak mengembalikan balasan"):
         list(consultation.ask("Resep ayam?", PROFILE, FakeKnowledgeBase(), FakeLLM(chunks=chunks)))
 
-    assert consultation.turns == ()
+    assert consultation.turns == before
 
 
 def test_reply_without_sources_is_still_recorded():
