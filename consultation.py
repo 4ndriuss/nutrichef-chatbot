@@ -4,24 +4,21 @@ Modul ini tidak bergantung pada Streamlit, Groq, maupun ChromaDB agar bisa diuji
 """
 
 from dataclasses import dataclass
-from typing import Dict, Iterator, List, Protocol, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, List, Protocol, Tuple
 
 from prompts import build_system_prompt
 
+if TYPE_CHECKING:
+    from knowledge_base import KnowledgeBase
+
 # Jumlah Turn terakhir yang ikut dikirim ke LLM agar konteks tetap fokus & efisien
 HISTORY_TURNS = 3
-# Jumlah chunk basis pengetahuan yang diambil per pertanyaan
-RETRIEVAL_TOP_K = 3
 
 
 class LLM(Protocol):
     """Port LLM: menerima pesan chat dan mengembalikan potongan teks balasan secara streaming."""
 
     def stream(self, messages: List[Dict[str, str]]) -> Iterator[str]: ...
-
-
-class KnowledgeBase(Protocol):
-    def format_context_for_prompt(self, query: str, top_k: int = 3) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -53,13 +50,13 @@ class Consultation:
     def turns(self) -> Tuple[Turn, ...]:
         return tuple(self._turns)
 
-    def ask(self, question: str, profile: Profile, knowledge_base: KnowledgeBase, llm: LLM) -> Iterator[str]:
+    def ask(self, question: str, profile: Profile, knowledge_base: "KnowledgeBase", llm: LLM) -> Iterator[str]:
         """
         Menjalankan satu Turn: retrieval RAG, menyusun system prompt, lalu streaming balasan LLM.
         Turn baru tercatat setelah generator habis dikonsumsi; jika LLM gagal, balasannya kosong,
         atau streaming dihentikan di tengah jalan, tidak ada yang dicatat dan error diteruskan ke pemanggil.
         """
-        sources = knowledge_base.format_context_for_prompt(question, top_k=RETRIEVAL_TOP_K)
+        sources = knowledge_base.find_sources(question)
 
         system_prompt = build_system_prompt(
             persona_name=profile.persona,

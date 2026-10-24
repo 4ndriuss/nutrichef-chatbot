@@ -37,7 +37,7 @@ class FakeKnowledgeBase:
     def __init__(self, context="[Konteks #1 | Sumber: resep.md | Topik: Pepes Ayam]\nPepes ayam 220 kkal."):
         self.context = context
 
-    def format_context_for_prompt(self, query, top_k=3):
+    def find_sources(self, question):
         return self.context
 
 

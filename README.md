@@ -55,7 +55,7 @@ Users can define food intolerances (e.g., *peanuts, shellfish, gluten, dairy*). 
 ### E. Hybrid RAG (Retrieval-Augmented Generation)
 - **Curated Knowledge Base**: Includes structured nutritional tables (Indonesian TKPI & USDA FoodData Central), evidence-based diet handbooks, and healthy recipes.
 - **Dynamic File Ingestion**: Users can upload supplementary documents (PDF, TXT, Markdown) directly through the UI, which are immediately parsed and embedded into the vector store.
-- **Dual Engine Resilience**: Primary semantic search using **ChromaDB** with `all-MiniLM-L6-v2` dense embeddings, backed by a deterministic **BM25 Lexical Fallback Engine**.
+- **Hybrid Retrieval**: Every question is searched by both a deterministic **BM25** lexical engine and **ChromaDB** semantic search (`all-MiniLM-L6-v2` embeddings); their rankings are merged with **Reciprocal Rank Fusion (RRF)**. If ChromaDB or its embedding model is unavailable (e.g. offline), retrieval transparently runs on BM25 alone and the sidebar shows which engines are active. See [ADR-0001](docs/adr/0001-hybrid-retrieval-keeps-chromadb.md) for why both engines are kept.
 
 ### F. Multi-turn Memory & Export
 - **Context-Aware Dialogue**: Maintains sliding-window conversational memory to support follow-up adjustments (e.g., *"Replace the chicken breast with tofu and recalculate the calories"*).
@@ -74,8 +74,10 @@ flowchart TD
     subgraph RAG_Pipeline [Hybrid RAG Pipeline]
         KB[(Curated Knowledge Base: Recipes & Nutrition Tables)] --> Chunker[Markdown / PDF Chunker]
         Upload[Dynamic User Upload: PDF/TXT] --> Chunker
-        Chunker --> VectorStore[(Vector Store: ChromaDB / BM25)]
-        UI -->|Semantic Query| Retriever[Context Retriever]
+        Chunker --> BM25[(BM25 Lexical Index)]
+        Chunker --> VectorStore[(ChromaDB Vector Store)]
+        UI -->|Query| Retriever[Hybrid Retriever: RRF Fusion]
+        BM25 --> Retriever
         VectorStore --> Retriever
     end
     
@@ -99,7 +101,7 @@ nutrichef-ai/
 ├── app.py                      # Main Streamlit application & interactive UI
 ├── consultation.py             # Consultation: turn history, RAG retrieval, prompt assembly, LLM streaming
 ├── llm.py                      # Groq adapter for the LLM port
-├── rag_pipeline.py             # RAG engine (ChromaDB vector store, BM25 fallback, PDF parser)
+├── knowledge_base.py           # Knowledge base: Documents, Excerpts, hybrid retrieval (BM25 + ChromaDB, RRF), PDF parser
 ├── prompts.py                  # Persona definitions, clinical diet rules, and prompt templates
 ├── tests/                      # pytest suite (runs offline with fake LLM & knowledge base)
 ├── data/

@@ -8,12 +8,24 @@ An Indonesian-language nutrition and meal-planning assistant that answers a user
 The ordered exchange of questions and replies between one user and NutriChef AI, from its start until it is reset.
 _Avoid_: Chat, conversation, session
 
+**Knowledge base**:
+Every Document NutriChef AI can draw Sources from, whether curated with the app or uploaded by a user.
+_Avoid_: Corpus, vector store, database
+
+**Document**:
+One file in the Knowledge base: a curated guide, recipe collection or nutrition table, or a file a user uploaded.
+_Avoid_: File, upload
+
+**Excerpt**:
+One titled section of a Document; the unit NutriChef AI retrieves from the Knowledge base.
+_Avoid_: Chunk, passage, snippet
+
 **Profile**:
 The persona, diet goal and allergies a user chooses for a Consultation. The persona is the voice NutriChef AI answers in; the diet goal and allergies describe the user.
 _Avoid_: Settings, preferences
 
 **Sources**:
-The knowledge base excerpts a reply was grounded in. A reply may have none.
+The Excerpts a reply was grounded in. A reply may have none.
 _Avoid_: RAG context, retrieved context, references, citations
 
 **Turn**:

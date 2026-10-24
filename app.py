@@ -8,7 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from consultation import Consultation, Profile
 from llm import GroqLLM
-from rag_pipeline import RAGPipeline
+from knowledge_base import KnowledgeBase
 from prompts import PERSONA_PROMPTS, DIET_GOAL_GUIDELINES
 
 # Muat variabel lingkungan dari .env jika ada
@@ -68,14 +68,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Inisialisasi Pipeline RAG di Session State ---
+# --- Inisialisasi Knowledge base (dibangun sekali per proses) ---
 @st.cache_resource(show_spinner=False)
-def get_rag_pipeline():
-    pipeline = RAGPipeline()
-    pipeline.load_knowledge_base()
-    return pipeline
+def get_knowledge_base():
+    return KnowledgeBase()
 
-rag = get_rag_pipeline()
+knowledge_base = get_knowledge_base()
 
 # Inisialisasi Konsultasi (riwayat Turn) per sesi pengguna
 if "consultation" not in st.session_state:
@@ -157,7 +155,7 @@ with st.sidebar:
     
     # 3. Parameter RAG & Upload Dokumen Tambahan
     st.subheader("📚 Basis Pengetahuan (RAG)")
-    st.info(f"Engine: **{rag.engine_type}**\nTotal Chunk Terindeks: **{len(rag.chunks)}**")
+    st.info(f"Engine: **{knowledge_base.engine_name}**\nTotal Excerpt Terindeks: **{knowledge_base.excerpt_count}**")
     
     uploaded_file = st.file_uploader(
         "Unggah File Panduan/Resep (PDF/TXT)",
@@ -167,7 +165,7 @@ with st.sidebar:
     if uploaded_file is not None:
         if st.button("📥 Proses & Masukkan ke Knowledge Base"):
             with st.spinner("Memproses dan mengindeks dokumen..."):
-                count = rag.add_uploaded_file(uploaded_file.name, uploaded_file)
+                count = knowledge_base.add_document(uploaded_file.name, uploaded_file)
                 st.success(f"Berhasil menambahkan {count} potongan informasi dari '{uploaded_file.name}'!")
                 
     show_sources = st.checkbox("Tampilkan Kutipan RAG di Jawaban", value=True)
@@ -203,7 +201,7 @@ with col_head1:
         unsafe_allow_html=True
     )
 with col_head2:
-    st.markdown(f"<div style='text-align: right; padding-top: 15px;'><span class='rag-badge'>⚡ RAG Active ({len(rag.chunks)} Docs)</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: right; padding-top: 15px;'><span class='rag-badge'>⚡ RAG Active ({knowledge_base.excerpt_count} Excerpt)</span></div>", unsafe_allow_html=True)
 
 st.write("")
 
@@ -277,7 +275,7 @@ if user_prompt:
     with st.chat_message("assistant"):
         try:
             llm = GroqLLM(api_key=groq_api_key, model=model_choice, temperature=temperature)
-            reply_stream = consultation.ask(user_prompt, profile, rag, llm)
+            reply_stream = consultation.ask(user_prompt, profile, knowledge_base, llm)
             st.write_stream(spinner_until_first_chunk(reply_stream, "Mencari referensi data gizi dan resep relevan..."))
             render_sources(consultation.turns[-1].sources)
         except Exception as e:
