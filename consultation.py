@@ -33,10 +33,11 @@ class Profile:
 
 
 @dataclass(frozen=True)
-class Message:
-    role: str
-    content: str
-    rag_context: str = ""
+class Turn:
+    """Satu pertanyaan pengguna beserta balasan NutriChef AI dan Sources (kutipan basis pengetahuan) balasan tersebut."""
+    question: str
+    reply: str
+    sources: str = ""
 
 
 class Consultation:
@@ -46,47 +47,49 @@ class Consultation:
     setelah streaming selesai, sehingga tidak ada pertanyaan tanpa balasan.
     """
     def __init__(self):
-        self._messages: List[Message] = []
+        self._turns: List[Turn] = []
 
     @property
-    def messages(self) -> Tuple[Message, ...]:
-        return tuple(self._messages)
+    def turns(self) -> Tuple[Turn, ...]:
+        return tuple(self._turns)
 
-    def ask(self, prompt: str, profile: Profile, knowledge_base: KnowledgeBase, llm: LLM) -> Iterator[str]:
+    def ask(self, question: str, profile: Profile, knowledge_base: KnowledgeBase, llm: LLM) -> Iterator[str]:
         """
         Menjalankan satu Turn: retrieval RAG, menyusun system prompt, lalu streaming balasan LLM.
-        Turn baru tercatat setelah generator habis dikonsumsi; jika LLM gagal atau streaming
-        dihentikan di tengah jalan, tidak ada yang dicatat dan error diteruskan ke pemanggil.
+        Turn baru tercatat setelah generator habis dikonsumsi; jika LLM gagal, balasannya kosong,
+        atau streaming dihentikan di tengah jalan, tidak ada yang dicatat dan error diteruskan ke pemanggil.
         """
-        rag_context = knowledge_base.format_context_for_prompt(prompt, top_k=RETRIEVAL_TOP_K)
+        sources = knowledge_base.format_context_for_prompt(question, top_k=RETRIEVAL_TOP_K)
 
         system_prompt = build_system_prompt(
             persona_name=profile.persona,
             diet_goal=profile.diet_goal,
             allergies=profile.allergies,
-            retrieved_context=rag_context,
+            retrieved_context=sources,
         )
-        # Setiap Turn terdiri dari 2 pesan (pertanyaan + balasan)
-        recent = self._messages[-2 * HISTORY_TURNS:]
         chat_payload = [{"role": "system", "content": system_prompt}]
-        chat_payload += [{"role": m.role, "content": m.content} for m in recent]
-        chat_payload.append({"role": "user", "content": prompt})
+        for turn in self._turns[-HISTORY_TURNS:]:
+            chat_payload.append({"role": "user", "content": turn.question})
+            chat_payload.append({"role": "assistant", "content": turn.reply})
+        chat_payload.append({"role": "user", "content": question})
 
         reply = ""
         for chunk in llm.stream(chat_payload):
             reply += chunk
             yield chunk
 
-        self._messages.append(Message(role="user", content=prompt))
-        self._messages.append(Message(role="assistant", content=reply, rag_context=rag_context))
+        # Balasan kosong bukan balasan: Turn tidak dicatat
+        if not reply.strip():
+            raise RuntimeError("NutriChef AI tidak mengembalikan balasan.")
+        self._turns.append(Turn(question=question, reply=reply, sources=sources))
 
     def reset(self):
-        self._messages = []
+        self._turns = []
 
     def transcript_markdown(self) -> str:
         """Menyusun transkrip Konsultasi dalam format Markdown untuk diunduh."""
         transcript = "# Transkrip Konsultasi NutriChef AI\n\n"
-        for m in self._messages:
-            role_label = "Pengguna" if m.role == "user" else "NutriChef AI"
-            transcript += f"### {role_label}:\n{m.content}\n\n"
+        for turn in self._turns:
+            transcript += f"### Pengguna:\n{turn.question}\n\n"
+            transcript += f"### NutriChef AI:\n{turn.reply}\n\n"
         return transcript

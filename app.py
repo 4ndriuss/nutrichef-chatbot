@@ -181,7 +181,7 @@ with st.sidebar:
             consultation.reset()
             st.rerun()
     with col_export:
-        if consultation.messages:
+        if consultation.turns:
             st.download_button(
                 label="📥 Unduh Chat",
                 data=consultation.transcript_markdown(),
@@ -208,7 +208,7 @@ with col_head2:
 st.write("")
 
 # Banner Sambutan jika Belum Ada Pesan
-if not consultation.messages:
+if not consultation.turns:
     with st.container():
         st.markdown("""
         ### 👋 Selamat Datang di NutriChef AI!
@@ -229,11 +229,11 @@ if not consultation.messages:
                 st.session_state.preset_prompt = "Buatkan rekomendasi sarapan lezat dengan indeks glikemik rendah yang aman untuk gula darah."
 
 
-def render_rag_sources(rag_context: str):
-    """Menampilkan kutipan RAG di bawah balasan jika ada dan pengguna mengaktifkannya."""
-    if rag_context and show_sources:
+def render_sources(sources: str):
+    """Menampilkan Sources (kutipan basis pengetahuan) di bawah balasan jika ada dan pengguna mengaktifkannya."""
+    if sources and show_sources:
         with st.expander("🔍 Referensi Basis Pengetahuan (RAG Context)"):
-            st.markdown(rag_context)
+            st.markdown(sources)
 
 
 def spinner_until_first_chunk(chunks, text: str):
@@ -246,10 +246,12 @@ def spinner_until_first_chunk(chunks, text: str):
 
 
 # Render Riwayat Konsultasi
-for msg in consultation.messages:
-    with st.chat_message(msg.role):
-        st.markdown(msg.content)
-        render_rag_sources(msg.rag_context)
+for turn in consultation.turns:
+    with st.chat_message("user"):
+        st.markdown(turn.question)
+    with st.chat_message("assistant"):
+        st.markdown(turn.reply)
+        render_sources(turn.sources)
 
 
 # Input Pengguna (Chat Input atau Preset Button)
@@ -277,6 +279,6 @@ if user_prompt:
             llm = GroqLLM(api_key=groq_api_key, model=model_choice, temperature=temperature)
             reply_stream = consultation.ask(user_prompt, profile, rag, llm)
             st.write_stream(spinner_until_first_chunk(reply_stream, "Mencari referensi data gizi dan resep relevan..."))
-            render_rag_sources(consultation.messages[-1].rag_context)
+            render_sources(consultation.turns[-1].sources)
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses permintaan ke Groq API: {e}")

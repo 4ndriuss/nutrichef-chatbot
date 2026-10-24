@@ -1,6 +1,10 @@
+"""
+test_consultation.py - Pengujian modul Consultation lewat interface-nya (LLM & basis pengetahuan palsu)
+"""
+
 import pytest
 
-from consultation import Consultation, Message, Profile
+from consultation import Consultation, Profile, Turn
 
 PROFILE = Profile(
     persona="Ahli Gizi Medis (Clinical Dietitian)",
@@ -46,15 +50,14 @@ def test_ask_streams_the_llm_reply_in_order():
     assert chunks == ["Pepes ", "ayam ", "kukus."]
 
 
-def test_consumed_reply_is_recorded_as_a_turn_with_its_rag_context():
+def test_consumed_reply_is_recorded_as_a_turn_with_its_sources():
     consultation = Consultation()
     knowledge_base = FakeKnowledgeBase(context="[Konteks #1]\nPepes ayam 220 kkal.")
 
     list(consultation.ask("Resep ayam?", PROFILE, knowledge_base, FakeLLM(chunks=["Pepes ", "ayam."])))
 
-    assert consultation.messages == (
-        Message(role="user", content="Resep ayam?"),
-        Message(role="assistant", content="Pepes ayam.", rag_context="[Konteks #1]\nPepes ayam 220 kkal."),
+    assert consultation.turns == (
+        Turn(question="Resep ayam?", reply="Pepes ayam.", sources="[Konteks #1]\nPepes ayam 220 kkal."),
     )
 
 
@@ -97,12 +100,12 @@ def test_llm_receives_only_the_last_three_turns_before_the_new_question():
 def test_llm_failure_mid_stream_reaches_the_caller_and_records_nothing():
     consultation = Consultation()
     list(consultation.ask("Q1", PROFILE, FakeKnowledgeBase(), FakeLLM(chunks=["A1"])))
-    before = consultation.messages
+    before = consultation.turns
 
     with pytest.raises(RuntimeError, match="Groq API error"):
         list(consultation.ask("Q2", PROFILE, FakeKnowledgeBase(), FailingLLM()))
 
-    assert consultation.messages == before
+    assert consultation.turns == before
 
 
 def test_abandoned_stream_records_nothing():
@@ -112,20 +115,30 @@ def test_abandoned_stream_records_nothing():
     next(stream)
     stream.close()
 
-    assert consultation.messages == ()
+    assert consultation.turns == ()
 
 
-def test_reply_without_retrieved_context_is_recorded_with_empty_rag_context():
+@pytest.mark.parametrize("chunks", [[], ["", ""], ["  ", "\n"]])
+def test_empty_reply_is_not_a_turn_and_raises(chunks):
+    consultation = Consultation()
+
+    with pytest.raises(RuntimeError, match="tidak mengembalikan balasan"):
+        list(consultation.ask("Resep ayam?", PROFILE, FakeKnowledgeBase(), FakeLLM(chunks=chunks)))
+
+    assert consultation.turns == ()
+
+
+def test_reply_without_sources_is_still_recorded():
     consultation = Consultation()
     llm = FakeLLM(chunks=["Tidak ada data."])
 
     list(consultation.ask("Apa itu xyz?", PROFILE, FakeKnowledgeBase(context=""), llm))
 
-    assert consultation.messages[-1] == Message(role="assistant", content="Tidak ada data.", rag_context="")
+    assert consultation.turns == (Turn(question="Apa itu xyz?", reply="Tidak ada data.", sources=""),)
     assert "BASIS PENGETAHUAN" not in llm.calls[0][0]["content"]
 
 
-def test_transcript_markdown_lists_each_message_under_its_speaker():
+def test_transcript_markdown_lists_each_question_and_reply_under_its_speaker():
     consultation = Consultation()
     list(consultation.ask("Resep ayam?", PROFILE, FakeKnowledgeBase(), FakeLLM(chunks=["Pepes ayam."])))
 
@@ -142,4 +155,4 @@ def test_reset_empties_the_consultation():
 
     consultation.reset()
 
-    assert consultation.messages == ()
+    assert consultation.turns == ()

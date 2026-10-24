@@ -12,6 +12,10 @@ _Avoid_: Chat, conversation, session
 The persona, diet goal and allergies a user chooses for a Consultation. The persona is the voice NutriChef AI answers in; the diet goal and allergies describe the user.
 _Avoid_: Settings, preferences
 
+**Sources**:
+The knowledge base excerpts a reply was grounded in. A reply may have none.
+_Avoid_: RAG context, retrieved context, references, citations
+
 **Turn**:
-One user question together with NutriChef AI's reply to it. A Consultation is made only of complete Turns; a question without a reply is not part of it.
-_Avoid_: Round, exchange
+One user question together with NutriChef AI's reply to it and the reply's Sources. A Consultation is made only of complete Turns; a question without a reply, or with an empty one, is not part of it.
+_Avoid_: Round, exchange, message
