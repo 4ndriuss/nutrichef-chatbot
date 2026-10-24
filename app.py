@@ -236,6 +236,15 @@ def render_rag_sources(rag_context: str):
             st.markdown(rag_context)
 
 
+def spinner_until_first_chunk(chunks, text: str):
+    """Menampilkan spinner hanya sampai potongan balasan pertama tiba (retrieval + menunggu LLM)."""
+    with st.spinner(text):
+        first = next(chunks, None)
+    if first is not None:
+        yield first
+        yield from chunks
+
+
 # Render Riwayat Konsultasi
 for msg in consultation.messages:
     with st.chat_message(msg.role):
@@ -266,8 +275,8 @@ if user_prompt:
     with st.chat_message("assistant"):
         try:
             llm = GroqLLM(api_key=groq_api_key, model=model_choice, temperature=temperature)
-            with st.spinner("Mencari referensi data gizi dan resep relevan..."):
-                st.write_stream(consultation.ask(user_prompt, profile, rag, llm))
+            reply_stream = consultation.ask(user_prompt, profile, rag, llm)
+            st.write_stream(spinner_until_first_chunk(reply_stream, "Mencari referensi data gizi dan resep relevan..."))
             render_rag_sources(consultation.messages[-1].rag_context)
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses permintaan ke Groq API: {e}")
